@@ -56,11 +56,11 @@ cd $ORCA_FIXTURE_DIR
 composer config --json extra.drupal-scaffold.allowed-packages '["acquia/acquia_cms"]' --merge
 
 # Allow third party plugins so that they are not blocked when CI jobs run by ORCA.
-composer config --no-plugins allow-plugins.dealerdirect/phpcodesniffer-composer-installer true;
-composer config --no-plugins allow-plugins.ergebnis/composer-normalize true;
+#composer config --no-plugins allow-plugins.dealerdirect/phpcodesniffer-composer-installer true;
+#composer config --no-plugins allow-plugins.ergebnis/composer-normalize true;
 
 # Install dev dependencies.
-composer require --dev weitzman/drupal-test-traits phpspec/prophecy-phpunit:^2
+#composer require --dev weitzman/drupal-test-traits phpspec/prophecy-phpunit:^2
 
 # If there is a pre-built archive of code, assets, and templates for
 # Cohesion, import that instead of calling out to Cohesion's API.
@@ -75,7 +75,7 @@ if [[ "$ACMS_JOB" == "base" ]] && [[ -n "$ACMS_DB_ARTIFACT" ]] && [[ -n "$ACMS_F
   echo "Installing From Artifacts"
   tar -xzf $ACMS_FILES_ARTIFACT
   gunzip $ACMS_DB_ARTIFACT
-  drush sql:cli < $TRAVIS_BUILD_DIR/tests/acms.sql
+  drush sql:cli < ${ORCA_SUT_DIR}/tests/acms.sql
 
   # Workaround to switch profile from acquia_cms to minimal.
   # @todo Remove this after we update tests artifacts, which is created based on release 2.0.x.
@@ -91,7 +91,7 @@ if [[ "$ACMS_JOB" == "starter" ]] && [[ -n "$ACMS_STARTER_DB_ARTIFACT" ]] && [[ 
   echo "Installing Starter From Artifacts"
   tar -xzf $ACMS_STARTER_FILES_ARTIFACT
   gunzip $ACMS_STARTER_DB_ARTIFACT
-  drush sql:cli < $TRAVIS_BUILD_DIR/tests/acms-starter.sql
+  drush sql:cli < ${ORCA_SUT_DIR}/tests/acms-starter.sql
 
   # Workaround to switch profile from acquia_cms to minimal.
   # @todo Remove this after we update tests artifacts, which is created based on release 2.0.x.
