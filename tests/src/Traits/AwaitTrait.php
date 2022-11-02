@@ -33,4 +33,22 @@ trait AwaitTrait {
     return $element;
   }
 
+  /**
+   * Waits while element has loading selector.
+   *
+   * @param string $selector
+   *   The element selector, e.g. 'css', 'xpath', etc.
+   * @param mixed $locator
+   *   The element locator, such as a CSS selector or XPath query.
+   * @param \Behat\Mink\Element\ElementInterface $container
+   *   The element which contains loading elements.
+   */
+  protected function waitWhileElementsLoading(string $selector, $locator, ElementInterface $container) : void {
+    // Wait till all the elements are loaded successfully.
+    $container->waitFor(10, function (ElementInterface $container) use ($selector, $locator) {
+      $elements = $container->findAll($selector, $locator);
+      return count($elements) == 0;
+    });
+  }
+
 }

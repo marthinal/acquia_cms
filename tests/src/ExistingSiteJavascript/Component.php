@@ -43,6 +43,9 @@ final class Component extends CohesionElement {
     $form = $this->waitForElementVisible('css', '.coh-layout-canvas-settings');
     // ...then wait the form wrapper to load the actual settings form.
     $this->waitForElementVisible('css', 'coh-component-form', $form);
+    // ...then wait while input elements are loading.
+    $this->waitWhileElementsLoading('css', 'input.loading', $form);
+
     return $form;
   }
 
