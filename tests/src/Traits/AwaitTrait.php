@@ -28,7 +28,9 @@ trait AwaitTrait {
       $element = $container->find($selector, $locator);
       return $element && $element->isVisible() ? $element : NULL;
     });
-
+    if (!$element instanceof ElementInterface) {
+      print_r($container->getHtml());
+    }
     Assert::assertInstanceOf(ElementInterface::class, $element);
     return $element;
   }
