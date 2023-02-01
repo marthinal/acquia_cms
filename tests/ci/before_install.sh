@@ -33,8 +33,8 @@ elif [ "${ACMS_JOB}" = "integrated_php_unit_tests" ]; then
   find modules/*/tests -type f -name "*Test.php" -exec rm -fr '{}' ';'
   # Remove all existing_site phpunit tests from acquia_cms repo as those get's covered from integrated_existing_site_tests.
   find tests/src -type f -name "*Test.php" -path "*/ExistingSite*/*" -exec rm -fr '{}' ';'
-elif [ "${ACMS_JOB}" = "isolated_tests" ]; then
-  # Do not run any existing site tests. We run them seperately.
+elif [ "${JOB_TYPE}" = "isolated-tests" ]; then
+  # Do not run any existing site tests. We run them separately.
   find tests/src modules -type f -name "*Test.php" -path "*/ExistingSite*/*" -exec rm -fr '{}' ';'
 fi
 
@@ -42,7 +42,7 @@ cd -
 
 ../../../orca/bin/ci/before_install.sh
 
-if [ "${JOB_TYPE}" = "integrated-tests" ]; then
+if [[ "${JOB_TYPE}" = "integrated-tests" && "${JOB_TYPE}" = "isolated-tests" ]]; then
   chromedriver --disable-dev-shm-usage --disable-extensions --disable-gpu --headless --no-sandbox --port=4444 &
   CHROMEDRIVER_PID=$!
   echo "CHROMEDRIVER_PID=${CHROMEDRIVER_PID}" >> ${GITHUB_ENV}
