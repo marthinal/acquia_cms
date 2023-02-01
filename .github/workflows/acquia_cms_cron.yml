@@ -3,6 +3,8 @@ on:
   schedule:
     - cron: "0 0 * * *"
 
+  push:
+    branches: [ ACMS-1451 ]
 # Set ORCA related environment variables.
 env:
   # Provide your package's name.
@@ -34,7 +36,6 @@ jobs:
         orca-job:
           - STATIC_CODE_ANALYSIS
           - STRICT_DEPRECATED_CODE_SCAN
-        #php-version: [ "8.1" ]
     steps:
       - uses: actions/checkout@v3
       - name: Use Node.js 12.13.1
@@ -44,7 +45,6 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: 8.1
-          #coverage: xdebug
       - name: Download ORCA
         run: |
           composer self-update
@@ -100,26 +100,7 @@ jobs:
           composer create-project --no-dev --ignore-platform-req=php acquia/orca ../orca "$ORCA_VERSION" -n
           curl https://gist.githubusercontent.com/vishalkhode1/0e26b2e9637722a256c74a6cb8496e9d/raw/sut-path-reposories.patch | git -C ../orca apply
       - name: Before Install
-        run: |
-          # One of the patch is failing on Drupal Core 9.5. So remove that patch.
-          if [ "${ORCA_JOB}" = "INTEGRATED_TEST_ON_PREVIOUS_MINOR" ]; then
-            NEW_JSON=$(composer config extra.patches."drupal/core" | sed -r 's/,?"3328187.*3142.patch"//')
-            composer config extra.patches.drupal/core "${NEW_JSON}" --json
-          fi
-
-          # Remove all PHPUnit tests from individual modules, except the integrated & ExistingSite tests.
-          if [ "${ACMS_JOB}" = "integrated_existing_site_tests" ]; then
-            find modules/*/tests tests -type f -name "*Test.php" ! -path "*/ExistingSite*/*" -exec rm -fr '{}' ';'
-          elif [ "${ACMS_JOB}" = "integrated_php_unit_tests" ]; then
-            # Remove all isolated/existing_site phpunit tests from acquia_cms modules.
-            find modules/*/tests -type f -name "*Test.php" -exec rm -fr '{}' ';'
-            # Remove all existing_site phpunit tests from acquia_cms repo as those get's covered from integrated_existing_site_tests.
-            find tests/src -type f -name "*Test.php" -path "*/ExistingSite*/*" -exec rm -fr '{}' ';'
-          fi
-          ../orca/bin/ci/before_install.sh
-          chromedriver --disable-dev-shm-usage --disable-extensions --disable-gpu --headless --no-sandbox --port=4444 &
-          CHROMEDRIVER_PID=$!
-          echo "CHROMEDRIVER_PID=${CHROMEDRIVER_PID}" >> ${GITHUB_ENV}
+        run: ./tests/ci/before_install.sh
       - name: Install
         run: ./tests/ci/install.sh
       - name: Before script
@@ -167,17 +148,7 @@ jobs:
           composer create-project --no-dev --ignore-platform-req=php acquia/orca ../orca "$ORCA_VERSION" -n
           curl https://gist.githubusercontent.com/vishalkhode1/0e26b2e9637722a256c74a6cb8496e9d/raw/sut-path-reposories.patch | git -C ../orca apply
       - name: Before Install
-        run: |
-          if [ "${ORCA_JOB}" = "INTEGRATED_TEST_ON_PREVIOUS_MINOR" ]; then
-            NEW_JSON=$(composer config extra.patches."drupal/core" | sed -r 's/,?"3328187.*3142.patch"//')
-            composer config extra.patches.drupal/core "${NEW_JSON}" --json
-          fi
-          # Do not run any existing site tests. We run them seperately.
-          find tests/src modules -type f -name "*Test.php" -path "*/ExistingSite*/*" -exec rm -fr '{}' ';'
-          ../orca/bin/ci/before_install.sh
-          chromedriver --disable-dev-shm-usage --disable-extensions --disable-gpu --headless --no-sandbox --port=4444 &
-          CHROMEDRIVER_PID=$!
-          echo "CHROMEDRIVER_PID=${CHROMEDRIVER_PID}" >> ${GITHUB_ENV}
+        run: ./tests/ci/before_install.sh
       - name: Install
         run: ./tests/ci/install.sh
       - name: Before script
