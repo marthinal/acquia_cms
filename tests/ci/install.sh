@@ -14,6 +14,11 @@ cd "$(dirname "$0")"
 # Reuse ORCA's own includes.
 source ../../../orca/bin/ci/_includes.sh
 
+# This is called because we've added drupal.org repository in all module's
+# composer.json. This script remove that repository section to avoid repository
+# priority error. See here: https://getcomposer.org/repoprio.
+../../scripts/cleanup_repo.sh
+
 # creates the ORCA fixture, as we do not want to use ORCA's standard fixture.
 create_fixture() {
   # Find drupal core version from ORCA_JOB variable.
