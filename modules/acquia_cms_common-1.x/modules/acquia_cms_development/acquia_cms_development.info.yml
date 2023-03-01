@@ -1,0 +1,9 @@
+name: 'Acquia CMS Development'
+package: 'Acquia CMS'
+description: 'Contains development configuration.'
+core_version_requirement: ^9.4
+type: module
+dependencies:
+  - acquia_connector:acquia_connector
+  - acquia_search:acquia_search
+  - config_rewrite:config_rewrite

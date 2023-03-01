@@ -1,0 +1,550 @@
+<?php
+
+/**
+ * @file
+ * Contains hook implementations for common, shared Acquia CMS functionality.
+ */
+
+use Acquia\DrupalEnvironmentDetector\AcquiaDrupalEnvironmentDetector as Environment;
+use Drupal\acquia_cms_common\Facade\MetatagFacade;
+use Drupal\acquia_cms_common\Facade\PermissionFacade;
+use Drupal\acquia_cms_common\Facade\SitemapFacade;
+use Drupal\acquia_cms_common\Facade\WorkbenchEmailFacade;
+use Drupal\acquia_cms_common\Facade\WorkflowFacade;
+use Drupal\Core\Breadcrumb\Breadcrumb;
+use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Installer\InstallerKernel;
+use Drupal\Core\Routing\RouteMatchInterface;
+use Drupal\Core\Url;
+use Drupal\editor\Entity\Editor;
+use Drupal\imce\Imce;
+use Drupal\node\NodeTypeInterface;
+use Drupal\workbench_email\TemplateInterface;
+use Symfony\Component\Yaml\Yaml;
+
+/**
+ * Implements hook_preinstall().
+ */
+function acquia_cms_common_module_preinstall($module) {
+  // Since we have moved config 'workflows.workflow.editorial.yml'
+  // to optional folder just to avoid error when common module
+  // get installed on vanilla drupal with standard profile,
+  // standard profile ship with 'workflows.workflow.editorial.yml'
+  // config by default.
+  if ($module == 'acquia_cms_common') {
+    _acquia_cms_common_rewrite_configuration('workflows.workflow.editorial', 'acquia_cms_common');
+  }
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ */
+function acquia_cms_common_form_user_login_form_alter(array &$form) {
+  if (Drupal::config('acquia_cms_common.settings')->get('user_login_redirection')) {
+    $form['#submit'][] = '\Drupal\acquia_cms_common\RedirectHandler::submitForm';
+  }
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_insert() for node types.
+ */
+function acquia_cms_common_node_type_insert(NodeTypeInterface $node_type) {
+  Drupal::classResolver(WorkflowFacade::class)->addNodeType($node_type);
+  Drupal::classResolver(MetatagFacade::class)->addNodeType($node_type);
+  Drupal::classResolver(SitemapFacade::class)->enableSitemap($node_type);
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_insert() for template types.
+ */
+function acquia_cms_common_workbench_email_template_insert(TemplateInterface $template_type) {
+  Drupal::classResolver(WorkbenchEmailFacade::class)
+    ->addTemplate($template_type);
+}
+
+/**
+ * Implements hook_preprocess_HOOK() for html.
+ */
+function acquia_cms_common_preprocess_html(&$variables) {
+  $path = Drupal::service('path.current')->getPath();
+  if (\Drupal::moduleHandler()->moduleExists('imce') && Imce::access() && $path == '/imce') {
+    $variables['attributes']['class'][] = 'acquia-cms';
+    $variables['#attached']['library'][] = 'acquia_cms_common/imce';
+  }
+}
+
+/**
+ * Implements hook_form_alter() for html.
+ */
+function acquia_cms_common_form_alter(&$form, FormStateInterface $form_state, $form_id) {
+  if ($form_id == 'views_exposed_form') {
+    $form['edit-keywords-label'] = [
+      '#type' => 'markup',
+      '#markup' => '<label for="edit-keywords" class="visually-hidden">' . t('Search') . '</label>',
+      '#allowed_tags' => [
+        'label',
+      ],
+    ];
+  }
+}
+
+/**
+ * Implements hook_views_data().
+ */
+function acquia_cms_common_views_data() {
+  return [
+    'views' => [
+      'main_listing_pages_view' => [
+        'title' => t('Main listing pages - Text area'),
+        'help' => t('Insert a text area inside a main view listing pages if the search server is available. If the view is not based on a Search API index, this behaves like a standard text area.'),
+        'area' => [
+          'id' => 'main_listing_pages_view',
+        ],
+      ],
+    ],
+  ];
+}
+
+/**
+ * Implements hook_theme().
+ */
+function acquia_cms_common_theme($existing, $type, $theme, $path) {
+  return [
+    'page__system__403' => [
+      'template' => 'page--system--403',
+      'path' => $path . '/templates',
+      'variables' => [
+        'headline' => t('Access denied!'),
+        'message' => t('You are not authorized to access this page.'),
+        'button_home' => t('Back to home'),
+        'button_search' => NULL,
+      ],
+    ],
+    'page__system__404' => [
+      'template' => 'page--system--404',
+      'path' => $path . '/templates',
+      'variables' => [
+        'headline' => t('Whoops!'),
+        'message' => t("We can't find the page you are looking for. You may find what you need on the home page:"),
+        'button_home' => t('Back to home'),
+        'button_search' => NULL,
+      ],
+    ],
+  ];
+}
+
+/**
+ * Implements hook_ckeditor5_css_alter().
+ */
+function acquia_cms_common_ckeditor5_css_alter(&$css, $editor) {
+  // Attach reset, plugin, base, theme, icon and fonts css files to ckeditor5.
+  $base_styles_edit_route = \Drupal::service('router.route_provider')
+    ->getRoutesByNames(['entity.cohesion_base_styles.edit_form']);
+  if (!(count($base_styles_edit_route) === 1)) {
+    return;
+  }
+
+  $body_route = Url::fromRoute('entity.cohesion_base_styles.edit_form', ['cohesion_base_styles' => 'body']);
+  $current_path = $body_route->isRouted() ? Url::fromRoute('<current>') : NULL;
+
+  // If paths don't match.
+  if ($current_path->getInternalPath() != $body_route->getInternalPath()) {
+
+    try {
+      // For "Filtered HTML" text format, set same styles as site studio format.
+      if ($editor->getFilterFormat() &&  $editor->getFilterFormat()->get('format') == 'filtered_html') {
+        $wysiwyg_cache_token = \Drupal::keyValue('cohesion.wysiwyg_cache_token');
+        $wysiwyg_cache_buster = $wysiwyg_cache_token->get('cache_token') ? '?_t=' . $wysiwyg_cache_token->get('cache_token') : '';
+        // Reset and ckeditor5 specific styles.
+        $cohesionModulePath = \Drupal::service('extension.list.module')->getPath('cohesion');
+        $streamWrapperManager = \Drupal::service('stream_wrapper_manager');
+        $css[] = $cohesionModulePath . '/css/reset.css' . $wysiwyg_cache_buster;
+        $css[] = $cohesionModulePath . '/css/plugin-styles.css' . $wysiwyg_cache_buster;
+
+        $default_theme_id = \Drupal::service('theme_handler')->getDefault();
+
+        if (\Drupal::service('cohesion.utils')->themeHasCohesionEnabled($default_theme_id)) {
+          $css_base_filename = \Drupal::service('cohesion.local_files_manager')
+            ->getStyleSheetFilename('base', $default_theme_id, TRUE);
+          $css_theme_filename = \Drupal::service('cohesion.local_files_manager')
+            ->getStyleSheetFilename('theme', $default_theme_id, TRUE);
+          // Generated stylsheets.
+          if ($streamWrapperManager->isValidUri($css_base_filename)) {
+            $css[] = $streamWrapperManager->getViaUri($css_base_filename)->getExternalUrl() . $wysiwyg_cache_buster;
+          }
+          if ($streamWrapperManager->isValidUri($css_theme_filename)) {
+            $css[] = $streamWrapperManager->getViaUri($css_theme_filename)->getExternalUrl() . $wysiwyg_cache_buster;
+          }
+
+        }
+        // Add the body reset stylesheet.
+        $css[] = $cohesionModulePath . '/css/cohesion-body-reset.css' . $wysiwyg_cache_buster;
+      }
+    }
+    catch (\Exception $e) {
+
+    }
+  }
+
+  // Icons and font libraries.
+  if (($font_libraries = \Drupal::service('settings.endpoint.utils')
+    ->siteLibraries('font_libraries'))) {
+    $css = array_merge($css, $font_libraries);
+  }
+
+  if (($icon_libraries = \Drupal::service('settings.endpoint.utils')
+    ->siteLibraries('icon_libraries'))) {
+    $css = array_merge($css, $icon_libraries);
+  }
+  $css = array_filter($css);
+  \Drupal::service('router.builder')->rebuildIfNeeded();
+}
+
+/**
+ * Helper function to write configurations.
+ *
+ * @param string $config
+ *   The name of configuration.
+ * @param string $module
+ *   The name of module.
+ */
+function _acquia_cms_common_rewrite_configuration(string $config, string $module) {
+  $module_path = \Drupal::service('extension.list.module')->getPath($module);
+  $module_path .= '/config/optional/' . $config . '.yml';
+  $content = file_get_contents($module_path);
+  $parsed_yml = Yaml::parse($content);
+
+  $active_storage = \Drupal::service('config.storage');
+  $active_storage->write($config, $parsed_yml);
+}
+
+/**
+ * Helper function to update views display_options's style.
+ *
+ * @throws \Drupal\Core\Entity\EntityStorageException
+ */
+function _acquia_cms_common_update_view_display_options_style($view_name, $display_id = 'default', $views_template = NULL) {
+  /** @var \Drupal\views\ViewEntityInterface $view */
+  $view_storage = \Drupal::entityTypeManager()->getStorage('view');
+  $view = $view_storage->load($view_name);
+  if (empty($view)) {
+    return;
+  }
+  $display = &$view->getDisplay($display_id);
+  $style_type = $display['display_options']['style']['type'] ?? NULL;
+  if ($style_type && $style_type !== 'cohesion_layout') {
+    $display['display_options']['style']['type'] = 'cohesion_layout';
+    $display['display_options']['style']['options'] = [
+      'views_template' => $views_template ?? 'view_tpl_' . $view_name,
+      'master_template' => 'master_template_boxed',
+    ];
+    $view_storage->save($view);
+  }
+}
+
+/**
+ * Helper function to update configuration for specified key.
+ *
+ * This is being used for updating page CT configurations.
+ *
+ * @param string $config_name
+ *   The configuration name which needs to be updated.
+ * @param array $configurations
+ *   An array of drupal configurations.
+ */
+function _acquia_cms_common_update_page_configurations(string $config_name, array $configurations) {
+  $configFactory = \Drupal::service('config.factory');
+  $config = $configFactory->getEditable($config_name);
+  $need_save = FALSE;
+  if (!empty($config)) {
+    foreach ($configurations as $key => $value) {
+      if ($config->get($key) != $value) {
+        $config->set($key, $value);
+        $need_save = TRUE;
+      }
+    }
+    // Only save if there's changes in value.
+    if ($need_save) {
+      $config->save();
+    }
+  }
+}
+
+/**
+ * Implements hook_mail_alter().
+ */
+function acquia_cms_common_mail_alter(&$message) {
+  if (strpos($message['key'], 'template::') === 0) {
+    if ((!empty($message['from'])) && ($message['from'] === 'no-reply@example.com')) {
+      $message['send'] = 'false';
+    }
+  }
+}
+
+/**
+ * Implements hook_system_breadcrumb_alter().
+ *
+ * This fixes the issue: https://www.drupal.org/project/drupal/issues/3220437.
+ *
+ * @todo Remove below & tests (NodeBreadcrumbTest) code once we have the stable working
+ * patch for this issue.
+ */
+function acquia_cms_common_system_breadcrumb_alter(Breadcrumb &$breadcrumb, RouteMatchInterface $route_match, array $context) {
+  if ($route_match->getRouteName() == "node.add" || $route_match->getRouteName() == "entity.node.edit_form") {
+    foreach ($breadcrumb->getLinks() as &$link) {
+      if (!$link->getText() && $link->getUrl()->getRouteName() == "view.frontpage.page_1") {
+        $link->setText(t("Node"));
+        break;
+      }
+    }
+    $breadcrumb->addCacheTags(['config:views.view.frontpage']);
+  }
+}
+
+/**
+ * Implements hook_preprocess_template().
+ */
+function acquia_cms_common_preprocess_status_report_general_info(&$variables) {
+  // Check for the starter kit selection.
+  if ($starter_kit = \Drupal::service('acquia_cms_common.utility')->getStarterKit()) {
+    // Store selected starter kit into the variable.
+    $variables['acquia_cms']['starter_kit'] = $starter_kit;
+  }
+}
+
+/**
+ * Implements hook_modules_installed().
+ */
+function acquia_cms_common_modules_installed($modules, $is_syncing) {
+  if (!$is_syncing) {
+    if (in_array('imagemagick', $modules) && Environment::isAhEnv()) {
+      $config_factory = \Drupal::configFactory();
+      $config_factory->getEditable('imagemagick.settings')
+        ->set('path_to_binaries', '/usr/bin/')
+        ->save();
+      $config_factory->getEditable('system.image')
+        ->set('toolkit', 'imagemagick')
+        ->save();
+    }
+    $content_model_modules = [
+      'acquia_cms_article',
+      'acquia_cms_dam',
+      'acquia_cms_event',
+      'acquia_cms_page',
+      'acquia_cms_person',
+      'acquia_cms_place',
+    ];
+    $media_modules = [
+      'acquia_cms_audio',
+      'acquia_cms_video',
+      'acquia_cms_image',
+      'acquia_cms_document',
+    ];
+    $rolesToCreate = $rolesToUpdate = [];
+    if (count(array_intersect($content_model_modules, $modules)) > 0) {
+      $rolesToCreate = [
+        'content_administrator',
+        'content_author',
+        'content_editor',
+      ];
+    }
+    if (count(array_intersect($media_modules, $modules)) > 0) {
+      $roles = [
+        'content_author',
+        'content_editor',
+      ];
+      $rolesToUpdate = array_merge($rolesToUpdate, array_diff($roles, $rolesToUpdate));
+    }
+    if (in_array('acquia_cms_site_studio', $modules)) {
+      $roles = [
+        'content_administrator',
+        'content_author',
+        'content_editor',
+        'site_builder',
+      ];
+      $rolesToUpdate = array_merge($rolesToUpdate, array_diff($roles, $rolesToUpdate));
+    }
+    if (in_array('acquia_cms_toolbar', $modules)) {
+      $roles = [
+        'content_administrator',
+        'content_author',
+        'content_editor',
+        'developer',
+        'user_administrator',
+        'site_builder',
+      ];
+      $rolesToUpdate = array_merge($rolesToUpdate, array_diff($roles, $rolesToUpdate));
+    }
+    if (in_array('acquia_cms_tour', $modules)) {
+      $roles = [
+        'content_administrator',
+        'content_author',
+        'content_editor',
+      ];
+      $rolesToUpdate = array_merge($rolesToUpdate, array_diff($roles, $rolesToUpdate));
+    }
+    if (in_array('shield', $modules)) {
+      $roles = [
+        'user_administrator',
+      ];
+      $rolesToUpdate = array_merge($rolesToUpdate, array_diff($roles, $rolesToUpdate));
+    }
+    if ($rolesToCreate || $rolesToUpdate) {
+      $permissionFacade = Drupal::classResolver(PermissionFacade::class);
+      foreach ($rolesToCreate as $role) {
+        $permissionFacade->createOrUpdateRole($role);
+      }
+      if ($rolesToCreate) {
+        // As we are programmatically creating the below roles,
+        // after any of the content model module is installed:
+        // - content_administrator
+        // - content_author
+        // - content_editor
+        // So we need to make sure that we also import the other optional
+        // configurations which is dependent on any of these roles.
+        /** @var \Drupal\Core\Config\ConfigInstallerInterface $config_installer */
+        $config_installer = \Drupal::service('config.installer');
+        $restrict_by_dependency = [
+          'config' => 'user.role.content_administrator',
+          'config' => 'user.role.content_author',
+          'config' => 'user.role.content_editor',
+        ];
+        $config_installer->installOptionalConfig(NULL, $restrict_by_dependency);
+      }
+      if ($rolesToUpdate) {
+        // We need to update only those roles, which are not created earlier.
+        $rolesToUpdate = array_diff($rolesToUpdate, $rolesToCreate);
+        foreach ($rolesToUpdate as $role) {
+          $permissionFacade->updateRole($role);
+        }
+      }
+    }
+
+    // Prevent installation of site studio package on module install
+    // during site installation from other modules, this causes issue.
+    $configFactory = \Drupal::service('config.factory');
+    $config = $configFactory->get('cohesion.settings');
+    $cohesion_configured = $config->get('api_key') && $config->get('organization_key');
+    if (!InstallerKernel::installationAttempted() && $cohesion_configured) {
+      $moduleHandler = \Drupal::service('module_handler');
+      $acms_modules = [
+        'acquia_cms_article',
+        'acquia_cms_audio',
+        'acquia_cms_dam',
+        'acquia_cms_event',
+        'acquia_cms_image',
+        'acquia_cms_page',
+        'acquia_cms_person',
+        'acquia_cms_place',
+        'acquia_cms_search',
+        'acquia_cms_video',
+      ];
+
+      if (array_intersect($acms_modules, $modules) &&
+      $moduleHandler->moduleExists('acquia_cms_site_studio') &&
+      !in_array('acquia_cms_site_studio', $modules)) {
+        $module_path = \Drupal::service('extension.list.module')->getPath('acquia_cms_site_studio');
+        $packages = $module_path . COHESION_SYNC_DEFAULT_MODULE_PACKAGES;
+        \Drupal::service('cohesion_sync.package_import_handler')->importPackagesFromPath($packages);
+      }
+    }
+
+    // Acquia connector check and set telemetry opt-in feature.
+    if (in_array('acquia_connector', $modules)) {
+      // Set telemetry to be TRUE on install of acquia_connector.
+      \Drupal::state()->set('acquia_connector.telemetry.opted', TRUE);
+    }
+  }
+}
+
+/**
+ * Prepares variables for maintenance page templates.
+ *
+ * Default template: maintenance-page.html.twig.
+ *
+ * @param array $variables
+ *   An associative array containing:
+ *   - content - An array of page content.
+ *
+ * @see template_preprocess_maintenance_page()
+ */
+function acquia_cms_common_preprocess_maintenance_page(array &$variables) {
+  $variables['#attached']['library'][] = 'acquia_claro/install-page';
+  $acquia_cms_path = \Drupal::service('extension.list.module')->getPath('acquia_cms_common');
+  $variables['install_page_logo_path'] = '/' . $acquia_cms_path . '/acquia_cms.png';
+}
+
+/**
+ * Implements hook_module_implements_alter().
+ */
+function acquia_cms_common_module_implements_alter(array &$implementations, string $hook): void {
+  if (\Drupal::moduleHandler()->moduleExists('acquia_connector') &&
+  ($hook === 'modules_installed' || $hook === 'modules_uninstalled')) {
+    // Check if telemetry not opted.
+    if (!\Drupal::state()->get('acquia_connector.telemetry.opted', TRUE)) {
+      // Revoke the invoking of hook_modules_installed and
+      // hook_modules_uninstalled of Acquia connector.
+      unset($implementations['acquia_connector']);
+    }
+  }
+  // Prevent installation of site studio package on module install
+  // during site installation from other modules, this causes issue.
+  if ($hook == 'modules_installed' && InstallerKernel::installationAttempted()) {
+    unset($implementations['cohesion_sync']);
+  }
+}
+
+/**
+ * Implements hook_css_alter().
+ */
+function acquia_cms_common_css_alter(array &$css) {
+  if (\Drupal::service('module_handler')->moduleExists('collapsiblock')) {
+    // Remove the default css provided by module: `collapsiblock`.
+    $path = \Drupal::service('extension.list.module')->getPath('collapsiblock') . '/theme/dist/css/collapsiblock.min.css';
+    unset($css[$path]);
+  }
+}
+
+/**
+ * Function to rewrite filtered_html & full_html configurations.
+ *
+ * @param bool $include_imce_plugin
+ *   Decides If imce_image plugin to add in editor toolbar settings.
+ *
+ * @see acquia_cms_audio_install()
+ * @see acquia_cms_document_install()
+ * @see acquia_cms_video_install()
+ * @see acquia_cms_image_install()
+ */
+function _acquia_cms_common_editor_config_rewrite(bool $include_imce_plugin = FALSE): void {
+  $editors = [
+    "filtered_html",
+    "full_html",
+  ];
+  foreach ($editors as $editor) {
+    try {
+      $editorObject = \Drupal::entityTypeManager()->getStorage('editor')->load($editor);
+      if ($editorObject instanceof Editor) {
+        $settings = $editorObject->getSettings();
+        $items = &$settings["toolbar"]["items"];
+        $plugins = &$settings['plugins'];
+        if (!in_array('drupalMedia', $items)) {
+          $items[] = 'drupalMedia';
+        }
+        if ($include_imce_plugin && !in_array('imce_image', $items)) {
+          $items[] = 'imce_image';
+        }
+        if (!in_array('<drupal-media data-align data-caption title>', $plugins['ckeditor5_sourceEditing']['allowed_tags'])) {
+          $plugins['ckeditor5_sourceEditing']['allowed_tags'][] = '<drupal-media data-align data-caption title>';
+        }
+        if ($plugins["media_media"]["allow_view_mode_override"] === FALSE) {
+          $plugins["media_media"]["allow_view_mode_override"] = TRUE;
+        }
+        $editorObject->setSettings($settings)->save();
+      }
+    }
+    catch (\Exception $e) {
+      \Drupal::logger("acquia_cms_config_rewrite")->error($e->getMessage());
+    }
+  }
+}
