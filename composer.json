@@ -19,14 +19,14 @@
     "require": {
         "acquia/acquia-cms-starterkit": "^1.0",
         "drupal/acquia_claro": "^1.3.4@alpha",
-        "drupal/acquia_cms_audio": "dev-develop",
-        "drupal/acquia_cms_component": "dev-develop",
-        "drupal/acquia_cms_dam": "dev-develop",
-        "drupal/acquia_cms_headless": "dev-develop",
-        "drupal/acquia_cms_site_studio": "dev-develop",
-        "drupal/acquia_cms_starter": "dev-develop",
-        "drupal/acquia_cms_toolbar": "dev-develop",
-        "drupal/acquia_cms_tour": "dev-develop",
+        "drupal/acquia_cms_audio": "1.x-dev",
+        "drupal/acquia_cms_component": "1.x-dev",
+        "drupal/acquia_cms_dam": "1.x-dev",
+        "drupal/acquia_cms_headless": "1.x-dev",
+        "drupal/acquia_cms_site_studio": "1.x-dev",
+        "drupal/acquia_cms_starter": "1.x-dev",
+        "drupal/acquia_cms_toolbar": "1.x-dev",
+        "drupal/acquia_cms_tour": "2.x-dev",
         "drush/drush": "^10 || ^11",
         "mnsami/composer-custom-directory-installer": "^2.0"
     },
@@ -140,7 +140,7 @@
             "url": "./modules/acquia_cms_article",
             "options": {
                 "versions": {
-                    "drupal/acquia_cms_article": "dev-develop"
+                    "drupal/acquia_cms_article": "1.x-dev"
                 }
             }
         },
@@ -149,13 +149,13 @@
             "url": "./modules/acquia_cms_audio",
             "options": {
                 "versions": {
-                    "drupal/acquia_cms_audio": "dev-develop"
+                    "drupal/acquia_cms_audio": "1.x-dev"
                 }
             }
         },
         "acquia_cms_common": {
             "type": "path",
-            "url": "./modules/acquia_cms_common",
+            "url": "./modules/acquia_cms_common*",
             "options": {
                 "versions": {
                     "drupal/acquia_cms_common": "dev-develop"
@@ -167,7 +167,7 @@
             "url": "./modules/acquia_cms_component",
             "options": {
                 "versions": {
-                    "drupal/acquia_cms_component": "dev-develop"
+                    "drupal/acquia_cms_component": "1.x-dev"
                 }
             }
         },
@@ -176,7 +176,7 @@
             "url": "./modules/acquia_cms_dam",
             "options": {
                 "versions": {
-                    "drupal/acquia_cms_dam": "dev-develop"
+                    "drupal/acquia_cms_dam": "1.x-dev"
                 }
             }
         },
@@ -185,7 +185,7 @@
             "url": "./modules/acquia_cms_document",
             "options": {
                 "versions": {
-                    "drupal/acquia_cms_document": "dev-develop"
+                    "drupal/acquia_cms_document": "1.x-dev"
                 }
             }
         },
@@ -194,7 +194,7 @@
             "url": "./modules/acquia_cms_event",
             "options": {
                 "versions": {
-                    "drupal/acquia_cms_event": "dev-develop"
+                    "drupal/acquia_cms_event": "1.x-dev"
                 }
             }
         },
@@ -203,7 +203,7 @@
             "url": "./modules/acquia_cms_headless",
             "options": {
                 "versions": {
-                    "drupal/acquia_cms_headless": "dev-develop"
+                    "drupal/acquia_cms_headless": "1.x-dev"
                 }
             }
         },
@@ -212,7 +212,7 @@
             "url": "./modules/acquia_cms_image",
             "options": {
                 "versions": {
-                    "drupal/acquia_cms_image": "dev-develop"
+                    "drupal/acquia_cms_image": "1.x-dev"
                 }
             }
         },
@@ -221,7 +221,7 @@
             "url": "./modules/acquia_cms_page",
             "options": {
                 "versions": {
-                    "drupal/acquia_cms_page": "dev-develop"
+                    "drupal/acquia_cms_page": "1.x-dev"
                 }
             }
         },
@@ -230,7 +230,7 @@
             "url": "./modules/acquia_cms_person",
             "options": {
                 "versions": {
-                    "drupal/acquia_cms_person": "dev-develop"
+                    "drupal/acquia_cms_person": "1.x-dev"
                 }
             }
         },
@@ -239,7 +239,7 @@
             "url": "./modules/acquia_cms_place",
             "options": {
                 "versions": {
-                    "drupal/acquia_cms_place": "dev-develop"
+                    "drupal/acquia_cms_place": "1.x-dev"
                 }
             }
         },
@@ -248,7 +248,7 @@
             "url": "./modules/acquia_cms_search",
             "options": {
                 "versions": {
-                    "drupal/acquia_cms_search": "dev-develop"
+                    "drupal/acquia_cms_search": "1.x-dev"
                 }
             }
         },
@@ -257,7 +257,7 @@
             "url": "./modules/acquia_cms_site_studio",
             "options": {
                 "versions": {
-                    "drupal/acquia_cms_site_studio": "dev-develop"
+                    "drupal/acquia_cms_site_studio": "1.x-dev"
                 }
             }
         },
@@ -266,7 +266,7 @@
             "url": "./modules/acquia_cms_starter",
             "options": {
                 "versions": {
-                    "drupal/acquia_cms_starter": "dev-develop"
+                    "drupal/acquia_cms_starter": "1.x-dev"
                 }
             }
         },
@@ -275,7 +275,7 @@
             "url": "./modules/acquia_cms_toolbar",
             "options": {
                 "versions": {
-                    "drupal/acquia_cms_toolbar": "dev-develop"
+                    "drupal/acquia_cms_toolbar": "1.x-dev"
                 }
             }
         },
@@ -284,7 +284,7 @@
             "url": "./modules/acquia_cms_tour",
             "options": {
                 "versions": {
-                    "drupal/acquia_cms_tour": "dev-develop"
+                    "drupal/acquia_cms_tour": "2.x-dev"
                 }
             }
         },
@@ -293,7 +293,7 @@
             "url": "./modules/acquia_cms_video",
             "options": {
                 "versions": {
-                    "drupal/acquia_cms_video": "dev-develop"
+                    "drupal/acquia_cms_video": "1.x-dev"
                 }
             }
         },
@@ -320,8 +320,6 @@
             "cd docroot/themes/contrib/acquia_claro && npm run build"
         ],
         "build:local": [
-            "@putenv MODULES_DIR=./docroot/modules/contrib",
-            "find $PWD/modules -name 'acquia_cms*' -type d -maxdepth 1 -exec ln -s -f '{}' $MODULES_DIR ';'",
             "cp -f phpunit.xml ./docroot/core"
         ],
         "cohesion:fixture": [
